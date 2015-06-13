@@ -1,0 +1,602 @@
+#include <time.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define PALAVRASDICIONÁRIO "palavras.dict" // essa constante deve ter o valor alterado, caso o caminho/nome do dicionário seja diferente do que está ali
+#define CONSOANTES 21
+#define PROXIMO(x) (x >= 'a') && (x <= 'z')
+#define ALFABETO 26
+#define TAMPALAVRA 3 + 1 //esse ultimo indica se a palavra está ou não está no dif
+#define VOGAIS 6
+
+
+//copiar o arquivo de entrada ("para poder chutar o original" (usar a cópia))
+char** arquivoLeitura(FILE ** f, int* lines){
+	char** arquivo_leitura;
+	char girar[256];
+	int linhas_arquivo;
+
+	//initializing values
+	arquivo_leitura = NULL;
+	linhas_arquivo = 0;
+	while(fgets(girar,255, *f) != NULL){
+		//aloca nova linha
+		arquivo_leitura = (char**) realloc(arquivo_leitura, (linhas_arquivo + 1)*sizeof(char*));
+		//using old value of linhas_arquivo, allocate line string and giving it the girar value
+		arquivo_leitura[linhas_arquivo] = (char*) calloc(strlen(girar)+1, sizeof(char));
+		arquivo_leitura[linhas_arquivo] = strcpy(arquivo_leitura[linhas_arquivo], girar);
+		//updating linhas_arquivo value
+		linhas_arquivo +=1;
+	}
+	*lines = linhas_arquivo;
+	return arquivo_leitura;
+}
+
+int Encerramento(char* string){
+	int l, c;
+
+	c = strlen(string) - 1;
+	
+
+	for(l = 0; l < c; ++l){
+		if((string[l] == ']') && (string[l+1] == ']'))
+			return 1;
+	}
+	return 0;
+}
+
+//descobre o tamanho da moldura
+void tamanho_do_quadro(char** strV, int lines, int* l, int* c){
+	int linhas, colunas;
+	char* girar;
+
+
+	linhas = 0;
+	colunas = 0;
+
+	girar = strV[0];
+     	if(girar!= NULL){
+		while(*girar!=']'){
+            	if((*girar == 'x')||(*girar == '*')){
+                	colunas=colunas+1;
+                }
+                girar++;
+		}
+        	girar = strV[linhas];
+        	//descobrir numero de linhas
+        	while(girar!=NULL){
+        		linhas++;
+				if(Encerramento(girar) == 1)
+                	break;
+                girar = strV[linhas];
+        	}
+
+	}
+
+	*l = linhas;
+	*c = colunas;
+
+}
+
+
+char** alocar_matriz(int linhas,int colunas){
+        char **matriz;
+        int i;
+        matriz = (char**)malloc(linhas*sizeof(char*));
+        for(i=0;i<linhas;i++)
+        {
+                matriz[i] = (char*)malloc(colunas*sizeof(char));
+        }
+        return matriz;
+}
+
+//pega o numero que esta do lado do 'x'
+int numeroSubstring(char* string){
+	int resposta;
+	int k, l;
+
+	resposta = 0;
+	k =1;
+	while((string[k+1] >= '0') && (string[k+1] <= '9'))
+		++k;
+	for(l = 1; l <= k; ++l){
+		//giving the x value here
+		resposta = resposta*10;
+		resposta += (string[l] - '0'); 
+	}//rof
+
+	return resposta;
+}
+
+//copia o vetor X com as palavras completas para a matriz com a moldura usando os indices
+void transferemoldura(char **entrada, char* Xs, int linhase, char **matriz, int linhas, int colunas){
+	int i;
+	int j;
+	int k;
+	char *girar;
+
+	for(i=0;i<linhas;i++){
+		girar = entrada[i];
+		k = 0;
+		for(j=0;j<colunas;j++){
+			if(girar[k] == 'x'){
+				matriz[i][j]=Xs[numeroSubstring(girar+k)];
+			}else if(girar[k] == '*'){
+				matriz[i][j] = '*';
+			}else{
+				j--;
+			}
+			k++;
+			//printf("%c", matriz[i][j]);
+		}//rof
+		//printf("\n");
+		
+	}//rof
+}                      
+
+void imprimemoldura(char* saida_name, char **matriz, int linhas, int colunas){
+	int i;
+	int j;
+	FILE* saida;
+
+	saida = fopen(saida_name, "w");
+
+	for(i=0;i<linhas;i++){
+		for(j=0;j<colunas;j++){
+			fprintf(saida,"%c ", matriz[i][j]);
+		}//rof
+		fprintf(saida,"\n");
+		
+	}//rof
+	fclose(saida);
+} 
+
+//deallocate a 2D array
+void deallocate(char** matriz,int linhas){
+        int i;
+	if (matriz == NULL)
+		return;
+        for(i=0; i<linhas;i++){
+		if(matriz[i] != NULL)
+			free(matriz[i]);
+        }
+        free(matriz);
+
+}
+
+// void imprimeVetores(char** strV, int lines){
+	// int i;
+
+	// for(i = 0; i < lines;  ++i){
+		// puts(strV[i]);
+	// }
+// }
+
+// void print_answer_vector(char** ansV, int lines){
+	// int i, j;
+
+	// for(i = 0; i < lines;  ++i){
+		// for(j = 0; j < TAMPALAVRA;  ++j){
+			// printf(" %d", (int) ansV[i][j]);
+		// }
+		// printf("\n");
+	// }
+// }
+
+ void print_indexed_answer_vector(char** ansV, int lines, char *I){
+	int i, j;
+
+	for(i = 0; i < lines;  ++i){
+		for(j = 0; j < TAMPALAVRA;  ++j){
+			printf(" %c",  I[ansV[i][j]]);
+		}
+		printf("\n");
+	}
+}
+
+int char_counter(char counted, char** strV, int lines){
+	int ocourences;
+	int i, j;
+
+	ocourences = 0;
+	for(i = 0; i < lines; ++i)
+		for(j = 0; strV[i][j] != '\0'; ++j)
+			if(strV[i][j] == counted)
+				ocourences++;
+
+	return ocourences;
+}
+
+//constroi o vetor de pal[ ... ] (guarda aqueles pal[...] do final d arquivo de forma organizada)
+//vetor de pal[] só guarda os numeros de x
+char** construirVetorResp(int x, char** strV, int lines){
+	char** respostas; // output
+	int i, j, k; // strV counters
+	int l, c; // answers header
+
+	respostas = (char**) malloc(x*sizeof(char*)); //n_ans: quantidade de 'p' encontrados
+	for(i = 0; i < x; ++i){
+		respostas[i] = (char*) calloc(TAMPALAVRA, sizeof(char));
+	}//rof
+	// initializing headers
+	l = 0;
+	c = 0;
+	//searching for x's
+	for(i = 0; i < lines; ++i){
+		if(strV[i][0] == 'd') break;
+		for(j = 0; j < strlen(strV[i]); ++j){
+			if(strV[i][j] == 'x'){
+				// getting the logic index of x i.e. (case x1: 1, x2: 2, ...)
+				respostas[l][c] = numeroSubstring(strV[i]+j);
+				//update headers aqui
+				c = (c+1)%(TAMPALAVRA-1);
+				if(c == 0)
+					l++;
+			}//fi
+		}//rof
+	}//rof
+	return respostas;
+}
+
+int encontresposta(char *ans, char** resposta, int x){
+	int i, j;
+
+	for(i = 0; i < x; ++i){
+		for(j = 0; j < 3; ++j)
+			if(resposta[i][j] != ans[j])
+				break;
+		if(j == 3)
+			return i;
+	}
+	return -1;
+
+}
+
+//verifica a unicidade de cada palavra no vetor de pal[..]
+void unicaresp(char** resp, int n_enc, char** entrada, int linha){
+	char c[3];
+	int h;
+	int i, j, k;
+	if(n_enc > 1){
+		//getting dif first line
+		for(i = 0; entrada[i][0] != 'd'; ++i)
+			if(i == linha)
+				return;
+		h = 0;
+		for(; i < linha; ++i){
+			for(j = 0; j < strlen(entrada[i]); ++j){
+				if(entrada[i][j] == 'x'){
+					c[h] = (char) numeroSubstring(entrada[i]+j);
+					h = (h + 1) % 3;
+					if (h == 0){
+						if((k = encontresposta(c, resp, n_enc)) >= 0){
+							resp[k][3] = 1;
+						}//fi
+					}//fi
+				}//fi
+			}//rof
+		}//rof
+	}//fi
+}
+
+//descobrir quantas letras tem na moldura
+int maiorX(char** ansV, int linha){
+	int i, j;
+	int maior = 0;
+	int flag = 0; // a flag to notify that an 0 exists
+
+	for(i = 0; i < linha;  ++i){
+		for(j = 0; j < TAMPALAVRA;  ++j){
+			if(ansV[i][j] > maior){
+				maior = ansV[i][j];
+			}/*else if((ansV[i][j] == 0)&&(oflag == 0)){
+				oflag++;
+			}*/
+		}
+	}
+	return maior + flag;
+}
+
+//ve se tem zero numa palavra do vetor de pal
+int temzero(char* v, int tam, char* I){
+	int i;
+
+	for(i = 0; i < tam; ++i){
+		if(I[v[i]] ==  (char) 0)
+			return 1;
+	}
+	return 0;
+}
+
+int palavravazia(char** palavra, int nw, char* I){
+	int i;
+
+	for(i = 0; i < nw; ++i){
+		// TO DO
+		if(temzero(palavra[i], TAMPALAVRA - 1, I) == 1)
+			return i;
+	}
+	return -1;
+}
+
+int incompleto(char* in, int tam, char* I){
+	int i, j;
+	j = 0;
+	for(i = 0; i < tam; ++i){
+		if(I[in[i]] !=  (char) 0)
+			j++;
+	}
+	if(j == tam)
+		return 0; 
+	if(j == 0)
+		return 0;
+	return 1;
+}
+
+//Verifica se há palavras incompletas no vetor de palavras
+/*quando eu completo uma palavra desse vetor(vetor de pal[..]), eu afeto outras palavras por causa da possibilidade de cruzamento. Verifico se ha cruzamento, afeta outras palavras e, se afetou, eu devo completá-la também.
+ex: pal[x1, x2, x3] pal[x1, x4, x5] Na busca de x mais popular, achamos o x1 e atribuímos a consoante mais popular ao x1. As palavras então ficaram pal[C1, x2, x3] pal[C1,x4, x5]. Completando a primeira palavra, temos pal[C1, V1, C2] pal[C1, x4, x5]. Entao acha essa pal[C1, x4, x5] e comlpeta. Gracas aos cruzamentos as palavras ficam com uma letra preenchida e vao sendo completadas*/
+int palavraIncompleta(char** palavras, int nw, char* I){
+	int i;
+
+	for(i = 0; i < nw; ++i){
+		if(incompleto(palavras[i], TAMPALAVRA - 1, I))
+			return i;
+	}
+	return -1;
+}
+
+//completa a palavra
+//Se não há palavra no dicionário que complete a palavra que a função promete completar, a função retorna erro
+int palavraCompleta(char* palavra, char* I, char** dicionario, int dife_lines){
+	int i, j;
+	//aply the scoreboard here (continue here)
+	for(i=0; i < dife_lines; ++i){
+		if( ((I[palavra[0]] == dicionario[i][0] ) || (I[palavra[0]] == 0)) &&
+			((I[palavra[1]] == dicionario[i][1] ) || (I[palavra[1]] == 0)) &&
+			((I[palavra[2]] == dicionario[i][2] ) || (I[palavra[2]] == 0))	)
+		{ // verificar essa condicao
+			for(j=0; j < (TAMPALAVRA - 1); ++j){
+				I[palavra[j]] = dicionario[i][j];
+				dicionario[i][j] = dicionario[i][j] - 32;
+			}
+			
+			return 1; // word completed sucessful
+		}
+	}
+	return 0; // couldn't complete the word
+}
+
+//verifica se a letra é uma vogal
+int buscaVogal(char e, int *vetor, int tam){
+	int i;
+
+	for(i = 0; i < tam; ++i){
+		if(e == vetor[i])
+			return i;
+	}
+	return -1;
+}
+
+//o objetivo é preencher o vetor X que será usado na função que você preenche a moldura
+char* game(char** dicionario, int dif_lines, int nx, char** palavra, int nw){
+	int Letra[ALFABETO][TAMPALAVRA];
+	int i, j;
+	int aux;
+	int x, c; // most popular x most popular letter 
+	char* X;
+	int** Xs; //medir a popularidade de cada X no vetor de pal[]
+ 
+
+	int vogais[VOGAIS] = {'a'-'a','e'-'a', 'i'-'a', 'o'-'a', 'u'-'a', 'y'-'a'};
+	int consoantes[CONSOANTES] = {'b'-'a','c'-'a', 'd'-'a', 'f'-'a', 'g'-'a','h'-'a', 'j'-'a', 'k'-'a', 'l'-'a', 'm'-'a', 'n'-'a','p'-'a', 'q'-'a', 'r'-'a', 's'-'a', 't'-'a', 'v'-'a','w'-'a', 'x'-'a', 'y'-'a', 'z'-'a'};
+	//initializing scoreboard
+	for(i = 0; i < ALFABETO; ++i){
+		for(j = 0; j < TAMPALAVRA; ++j){
+			Letra[i][j] = 0; //nada foi contado ainda e para nao usar o lixo de dentro inicializo com zero
+		}
+	}
+	//filling scoreboard with the position score and total score
+	//ele busca a popularidade nas posicoes do dicionario de palavras
+	//ex: pal[x1, x2, x3] pal[x1, x4, x5], fica 1 = {2, 0, 0, 2}; 2={0,1,0,1}; 3={0,0,1,1}; ...
+	for(i = 0; i < dif_lines; ++i){
+		for(j = 0; j < (TAMPALAVRA - 1); ++j){
+			Letra[dicionario[i][j] - 'a'][j]++;
+			Letra[dicionario[i][j] - 'a'][TAMPALAVRA - 1]++;
+		}
+	}
+	//initializing Xscoreboard
+	Xs = (int**) malloc(nx*sizeof(int*));
+	//ele busca a popularidade nas posicoes do dicionario de pal[..]
+	for(i = 0; i < nx; ++i)
+		Xs[i] = (int*) calloc(TAMPALAVRA, sizeof(int));
+
+	for(i = 0; i < nw; ++i){
+		for(j = 0; j < (TAMPALAVRA - 1); ++j){
+			Xs[palavra[i][j]][j]++;
+			Xs[palavra[i][j]][(TAMPALAVRA - 1)]++;
+		}
+	}
+
+	X = (char*) calloc(nx, sizeof(char));
+	//find a popularity 2 x
+	while(palavravazia(palavra, nw, X) >= 0){
+			for(i = 0; i < nx; ++i)
+			if(Xs[i][TAMPALAVRA - 1] == 2)
+				break;
+	
+		if(i == nx){
+			while(( aux = palavravazia(palavra, nw, X) ) >= 0){ //verifica se ha palavra vazia
+				palavraCompleta(palavra[aux], X, dicionario, dif_lines);
+			}
+
+		}else{
+						x = i;
+			c = consoantes[0];
+			for(i = 1; i < CONSOANTES; ++i){
+				if(Letra[consoantes[i]][TAMPALAVRA - 1] 
+					> Letra[c][TAMPALAVRA - 1])
+					c = consoantes[i];
+			}//rof
+			X[x] = c + 'a';
+			for(i = 0; i < TAMPALAVRA; ++i){
+				Letra[c][i] -= Xs[x][i];
+				}//rof
+			while(( aux = palavraIncompleta(palavra, nw, X) ) >= 0){
+				
+				for(i = 0; i < (TAMPALAVRA - 1); ++i){
+					if(X[palavra[aux][i]] == 0){ //if this letter is missing
+						if(Xs[palavra[aux][i]][TAMPALAVRA - 1] == 2){
+					
+							if(i == 0){
+								if(buscaVogal(X[palavra[aux][i+1]] - 'a', vogais, VOGAIS) >= 0){
+									// must be a consonant
+									c = consoantes[0];
+									for(i = 1; i < CONSOANTES; ++i){
+										if(Letra[consoantes[i]][TAMPALAVRA - 1] 
+											> Letra[c][TAMPALAVRA - 1])
+											c = consoantes[i];
+									}//rof
+								}else{
+									// must be a vowel
+									c = vogais[0];
+									for(i = 1; i < VOGAIS; ++i){
+										if(Letra[vogais[i]][TAMPALAVRA - 1] 
+											> Letra[c][TAMPALAVRA - 1])
+											c = vogais[i];
+									}//rof
+
+								}//esle
+								}else if(i == 2){
+								if(buscaVogal(X[palavra[aux][i-1]] - 'a', vogais, VOGAIS) >= 0){
+									// must be a consonant
+									c = consoantes[0];
+									for(i = 1; i < CONSOANTES; ++i){
+										if(Letra[consoantes[i]][TAMPALAVRA - 1] 
+											> Letra[c][TAMPALAVRA - 1])
+											c = consoantes[i];
+									}//rof
+
+								}else{
+									// must be a vowel
+									c = vogais[0];
+									for(i = 1; i < VOGAIS; ++i){
+										if(Letra[vogais[i]][TAMPALAVRA - 1] 
+											> Letra[c][TAMPALAVRA - 1])
+											c = vogais[i];
+									}//rof
+								}//esle
+							}else{
+								if(((buscaVogal(X[palavra[aux][i-1]] - 'a', vogais, VOGAIS) >= 0))
+									&&((buscaVogal(X[palavra[aux][i-1]] - 'a', vogais, VOGAIS) >= 0)))
+								{
+									//must be a consonant
+									c = consoantes[0];
+									for(i = 1; i < CONSOANTES; ++i){
+										if(Letra[consoantes[i]][TAMPALAVRA - 1] 
+											> Letra[c][TAMPALAVRA - 1])
+											c = consoantes[i];
+									}//rof
+
+								}else{
+									// must be a vowel
+									c = vogais[0];
+									for(i = 1; i < VOGAIS; ++i){
+										if(Letra[vogais[i]][TAMPALAVRA - 1] 
+											> Letra[c][TAMPALAVRA - 1])
+											c = vogais[i];
+									}//rof
+								}//esle
+								X[x] = c + 'a';
+								for(i = 0; i < TAMPALAVRA; ++i){
+									Letra[c][i] -= Xs[x][i];
+									//Xs[x][i] = 0; I don't do this because 
+										//if I need to restore the Letter pop, I have backup
+
+								}//rof
+							}//esle
+							
+						}//fi
+					}//fi
+				}//rof
+				if(palavraCompleta(palavra[aux], X, dicionario, dif_lines) == 0){
+					for(i = 0; i < (TAMPALAVRA-1); ++i){
+						if(X[palavra[aux][i]] > 0){
+							Letra[X[palavra[aux][i]] - 'a'][i] += Xs[palavra[aux][i]][i];
+							X[palavra[aux][i]] = 0;
+						}//fi
+					}//rof
+				}//fi
+			}//elihw
+
+		}//esle
+
+	}//elihw
+	return X;
+
+}
+
+char* getXs(int nxs, char** palavras, int nw){
+	FILE * url;
+	char** dict_file_text;
+	int dict_linha;
+	char* Xs;
+
+	Xs = NULL;
+	url = fopen(PALAVRASDICIONÁRIO, "r");
+	if(url != NULL){
+		dict_file_text = arquivoLeitura(&url, &dict_linha);
+		fclose(url);
+		Xs = game(dict_file_text, dict_linha, nxs, palavras, nw);
+		deallocate(dict_file_text, dict_linha); //desaloca o dicionário de palavras
+	}
+	
+	return Xs;
+}
+
+int main(int argc, char** argv){
+	FILE* entrada;
+	char **quadro;
+	int quadro_linhas;
+	int quadro_colunas;
+	char** arquivo_leitura;
+	int linha;
+	char** palavra;
+	int contador;
+	char* X;
+	int nxs;
+
+	if(argc < 3){
+		printf("Linha de comando passada incorretamente\n");
+		return (-1);
+	}
+
+	quadro = NULL;
+	arquivo_leitura = NULL;
+	palavra = NULL;
+	X = NULL;
+
+	entrada = fopen(argv[1],"r");
+	if(entrada == NULL){
+		printf("Arquivo inexistente ou corrompido\n");
+		return (-1);
+	}
+	
+	arquivo_leitura = arquivoLeitura(&entrada, &linha);
+	rewind(entrada);
+	fclose(entrada);
+	tamanho_do_quadro(arquivo_leitura, linha, &quadro_linhas, &quadro_colunas);
+	quadro=alocar_matriz(quadro_linhas, quadro_colunas);
+	contador = char_counter('p', arquivo_leitura, linha);
+	palavra = construirVetorResp(contador, arquivo_leitura+quadro_linhas, linha-quadro_linhas);
+	unicaresp(palavra, contador, arquivo_leitura, linha);
+	nxs = greaterX(palavra, contador);
+	X = getXs(nxs+1, palavra, contador); // usar constante PALAVRASDICIONÁRIO como dicionario de palavras
+	transferemoldura(arquivo_leitura, X, linha,  quadro, quadro_linhas, quadro_colunas);
+	imprimemoldura(argv[2], quadro, quadro_linhas, quadro_colunas);
+	deallocate(arquivo_leitura, linha);
+	deallocate(quadro, quadro_linhas);
+	deallocate(palavra, contador);
+	
+}
